@@ -47,7 +47,8 @@ fn create_homepath_dir(dir: &PathBuf) -> io::Result<()> {
 /// ```
 /// get_or_create_local_config_dir().expect("Failed to get or create the homepat config directory.");
 /// ```
-fn get_or_create_local_config_dir() -> Result<PathBuf, String> {
+#[mockable]
+pub fn get_or_create_local_config_dir() -> Result<PathBuf, String> {
     match get_home_dir() {
         Some(dir) => {
             let home_path = Path::new(&dir).join(CONFIG_DIR_NAME);
@@ -80,11 +81,14 @@ mod tests {
 
     #[test]
     fn test_get_or_create_local_config_dir_home_exists() {
+        let _ = fs::create_dir("./.rr").expect("Failed to create test directory.");
         get_home_dir.mock_safe(|| MockResult::Return(Some(".".to_string())));
 
         let dir_result = get_or_create_local_config_dir();
         assert!(dir_result.is_ok());
 
+
+        fs::remove_dir("./.rr").expect("Failed to delete test directory.");
     }
 
     #[test]
