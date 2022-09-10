@@ -14,6 +14,9 @@ fn main() {
     let cmd_result = match root_args.cmd {
         cli::ClusterCommand::Config(config_args) => match config_args {
             cli::ClusterConfig::Ls(ls_command) => ls_command.execute()
+        },
+        cli::ClusterCommand::Cluster(cluster_args) => match cluster_args {
+            cli::ClusterRuntime::Start(start_command) => start_command.execute()
         }
     };
 
