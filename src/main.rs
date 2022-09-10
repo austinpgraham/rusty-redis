@@ -5,6 +5,7 @@ use cli::cmd::Executable;
 use structopt::StructOpt;
 
 mod cli;
+mod cluster;
 
 fn main() {
     pretty_env_logger::init();

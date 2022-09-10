@@ -2,7 +2,10 @@ use std::{path::PathBuf, str::FromStr};
 
 use structopt::StructOpt;
 
-use super::cmd::Executable;
+use crate::{
+    cli::cmd::Executable,
+    cluster::config::list_conf_files
+};
 
 #[derive(Debug, StructOpt)]
 pub struct ClusterLs {
@@ -25,7 +28,7 @@ impl Executable for ClusterLs {
         if !base_path.exists() {
             Err("The given base_dir does not exist.".to_string())
         } else {
-            Ok(())
+            list_conf_files(&base_path)
         }
     }
 }
