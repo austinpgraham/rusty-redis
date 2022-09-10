@@ -1,16 +1,17 @@
 use std::{
     path::PathBuf,
-    process::Command
+    process::{Command, Stdio}
 };
 
 use crate::cluster::config::read_conf_file;
 
 #[inline]
-fn spawn_server_process(conf_file: String) -> Result<(), ()> {
+fn spawn_server_process(conf_file: String) -> Result<u32, ()> {
     match Command::new("redis-server")
                                 .arg(conf_file)
+                                .stdout(Stdio::null())
                                 .spawn() {
-                                    Ok(_) => Ok(()),
+                                    Ok(child) => Ok(child.id()),
                                     Err(_) => Err(())
                                 }
 }
@@ -23,8 +24,8 @@ pub fn start_cluster(cluster_host: &String, conf_files: Vec<String>) -> Result<(
                                     {
                                         let file_path = path.to_str().unwrap().to_string(); 
                                         match spawn_server_process(file_path.clone()) {
-                                            Ok(_) => {
-                                                info!("Process with conf {} successfully started.", file_path);
+                                            Ok(child_pid) => {
+                                                info!("Process with conf {} successfully started with PID: {}.", file_path, child_pid);
                                                 Ok(())
                                             },
                                             Err(_) => {

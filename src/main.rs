@@ -1,11 +1,15 @@
+#![cfg_attr(test, feature(proc_macro_hygiene))]
+
 extern crate pretty_env_logger;
 #[macro_use] extern crate log;
+#[cfg(test)] extern crate mocktopus;
 
 use cli::cmd::Executable;
 use structopt::StructOpt;
 
 mod cli;
 mod cluster;
+mod local;
 
 fn main() {
     pretty_env_logger::init();
