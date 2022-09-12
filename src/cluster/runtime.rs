@@ -1,48 +1,56 @@
 use std::{
+    borrow::BorrowMut,
+    collections::HashSet,
     path::PathBuf,
-    process::{Command, Stdio}, collections::HashSet, borrow::BorrowMut
+    process::{Command, Stdio},
 };
 
-use crate::{cluster::config::read_conf_file, local::pid::{get_currently_running_pids, PIDEntry, write_data_to_pid_file}};
+use crate::{
+    cluster::config::read_conf_file,
+    local::pid::{get_currently_running_pids, write_data_to_pid_file, PIDEntry},
+};
 
 #[inline]
 fn spawn_server_process(conf_file: String) -> Result<u32, ()> {
     match Command::new("redis-server")
-                                .arg(conf_file)
-                                .stdout(Stdio::null())
-                                .stderr(Stdio::null())
-                                .spawn() {
-                                    Ok(child) => Ok(child.id()),
-                                    Err(msg) => {
-                                        error!("{}", msg);
-                                        Err(())
-                                    }
-                                }
+        .arg(conf_file)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        Ok(child) => Ok(child.id()),
+        Err(msg) => {
+            error!("{}", msg);
+            Err(())
+        }
+    }
 }
 
 #[inline]
-fn spawn_cluster_process(cluster_host: &String, pid_entries: &HashSet<PIDEntry>) -> Result<u32, ()> {
-    let cluster_string = pid_entries.iter()
-                                        .map(|entry| format!("{}:{}", cluster_host, entry.port))
-                                        .collect::<Vec<String>>();
+fn spawn_cluster_process(
+    cluster_host: &String,
+    pid_entries: &HashSet<PIDEntry>,
+) -> Result<u32, ()> {
+    let cluster_string = pid_entries
+        .iter()
+        .map(|entry| format!("{}:{}", cluster_host, entry.port))
+        .collect::<Vec<String>>();
 
     let mut root_command = Command::new("redis-cli");
     let mut command = root_command.borrow_mut();
     command = command.arg("--cluster").arg("create");
-                    
+
     for entry in cluster_string.iter() {
         command = command.arg(entry);
     }
 
-    match command.stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .spawn() {
-                    Ok(child) => Ok(child.id()),
-                    Err(msg) => {
-                        error!("{}", msg);
-                        Err(())
-                    }
-                }                                
+    match command.stdout(Stdio::null()).stderr(Stdio::null()).spawn() {
+        Ok(child) => Ok(child.id()),
+        Err(msg) => {
+            error!("{}", msg);
+            Err(())
+        }
+    }
 }
 
 #[inline]
@@ -53,21 +61,19 @@ fn kill_current_processes(pid_set: &HashSet<PIDEntry>) -> Result<(), ()> {
         command = command.arg(pid.pid.to_string());
     }
 
-    match command.stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .spawn() {
-                    Ok(_) => Ok(()),
-                    Err(msg) => {
-                        error!("{}", msg);
-                        Err(())
-                    }
-                }
+    match command.stdout(Stdio::null()).stderr(Stdio::null()).spawn() {
+        Ok(_) => Ok(()),
+        Err(msg) => {
+            error!("{}", msg);
+            Err(())
+        }
+    }
 }
 
 #[derive(Debug)]
 struct ServerConf {
     pub conf_path: PathBuf,
-    pub conf_port: String
+    pub conf_port: String,
 }
 
 pub fn start_cluster(cluster_host: &String, conf_files: Vec<String>) -> Result<(), String> {
@@ -83,7 +89,7 @@ pub fn start_cluster(cluster_host: &String, conf_files: Vec<String>) -> Result<(
                                             match read_conf_file(&file) {
                                                 Ok(conf_content) => {
                                                     if let Some(port_val) = conf_content.get("port") {
-                                                        Ok(ServerConf{ 
+                                                        Ok(ServerConf{
                                                             conf_path: file.clone(),
                                                             conf_port: port_val.clone()
                                                          })
@@ -115,7 +121,6 @@ pub fn start_cluster(cluster_host: &String, conf_files: Vec<String>) -> Result<(
                                         .filter(|entry| entry.is_ok())
                                         .map(|entry| entry.unwrap())
                                         .collect();
-            
             if valid_processes.len() <= 0 {
                 Err("No valid configuration files were found.".to_string())
             } else {

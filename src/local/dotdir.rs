@@ -1,7 +1,6 @@
 use std::{
-    path::{PathBuf, Path},
-    env,
-    fs, io
+    env, fs, io,
+    path::{Path, PathBuf},
 };
 
 use mocktopus::macros::mockable;
@@ -12,7 +11,7 @@ const CONFIG_DIR_NAME: &str = ".rr";
 
 /// Get the directory stored as $HOME on the host
 /// machine.
-/// 
+///
 /// # Examples
 /// ```
 /// let system_home_dir = get_home_dir().expect("$HOME is not set.");
@@ -25,10 +24,10 @@ fn get_home_dir() -> Option<String> {
 
 /// Create a the home path system config directory, forwarding
 /// the result onto the caller.
-/// 
+///
 /// # Arguments
 /// * `dir` - The directory to create.
-/// 
+///
 /// # Examples
 /// ```
 /// let homepath = Path::new("/my/home/dir").join(CONFIG_DIR_NAME);
@@ -42,7 +41,7 @@ fn create_homepath_dir(dir: &PathBuf) -> io::Result<()> {
 
 /// Get the path for, and create if needed, for the home config
 /// directory given by CONFIG_DIR_NAME.
-/// 
+///
 /// # Examples
 /// ```
 /// get_or_create_local_config_dir().expect("Failed to get or create the homepat config directory.");
@@ -54,20 +53,20 @@ pub fn get_or_create_local_config_dir() -> Result<PathBuf, String> {
             let home_path = Path::new(&dir).join(CONFIG_DIR_NAME);
             if !home_path.exists() {
                 if create_homepath_dir(&home_path).is_err() {
-                    return Err("Failed to create non-existent config directory .rr.".to_string())
+                    return Err("Failed to create non-existent config directory .rr.".to_string());
                 }
             }
 
             Ok(home_path)
-        },
-        None => Err("No value found for $HOME, cannot create CLI context.".to_string())
+        }
+        None => Err("No value found for $HOME, cannot create CLI context.".to_string()),
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use mocktopus::mocking::{Mockable, MockResult};
+    use mocktopus::mocking::{MockResult, Mockable};
 
     use super::*;
 
@@ -87,7 +86,6 @@ mod tests {
         let dir_result = get_or_create_local_config_dir();
         assert!(dir_result.is_ok());
 
-
         fs::remove_dir("./.rr").expect("Failed to delete test directory.");
     }
 
@@ -99,5 +97,4 @@ mod tests {
         let dir_result = get_or_create_local_config_dir();
         assert!(dir_result.is_ok());
     }
-
 }

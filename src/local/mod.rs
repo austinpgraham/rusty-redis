@@ -1,2 +1,2 @@
-pub mod pid;
 pub mod dotdir;
+pub mod pid;
