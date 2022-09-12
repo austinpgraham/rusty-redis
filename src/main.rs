@@ -4,6 +4,8 @@ extern crate pretty_env_logger;
 #[macro_use] extern crate log;
 #[cfg(test)] extern crate mocktopus;
 
+use std::env;
+
 use cli::cmd::Executable;
 use structopt::StructOpt;
 
@@ -12,6 +14,11 @@ mod cluster;
 mod local;
 
 fn main() {
+    // Set the default log level if not provided
+    if env::var("RUST_LOG").is_err() {
+        env::set_var("RUST_LOG", "info")
+    }
+
     pretty_env_logger::init();
 
     let root_args = cli::RootCommand::from_args();

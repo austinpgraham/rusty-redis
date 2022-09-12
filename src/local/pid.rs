@@ -134,7 +134,7 @@ pub fn get_currently_running_pids() -> Result<HashSet<PIDEntry>, String> {
 /// write_data_to_pid_file(pid_set).expect("Failed to write PIDs to save file.");
 /// ```
 #[mockable]
-pub fn write_data_to_pid_file(pid_set: HashSet<PIDEntry>) -> Result<(), String> {
+pub fn write_data_to_pid_file(pid_set: &HashSet<PIDEntry>) -> Result<(), String> {
     let config_file_path = get_or_create_local_config_dir()?;
     let server_pid_path = config_file_path.join(SERVER_PID_FILE_NAME);
     match create_pid_file(&server_pid_path) {
@@ -230,7 +230,8 @@ mod tests {
         get_or_create_local_config_dir.mock_safe(move || MockResult::Return(Ok(sample_path.clone())));
         create_pid_file.mock_safe(|_| MockResult::Return(io::Result::Err(io::Error::from(io::ErrorKind::PermissionDenied))));
 
-        let write_result = write_data_to_pid_file(HashSet::new());
+        let test_set: HashSet<PIDEntry> = HashSet::new();
+        let write_result = write_data_to_pid_file(&test_set);
         assert!(write_result.is_err());
     }
 
@@ -242,7 +243,7 @@ mod tests {
         let mut test_set: HashSet<PIDEntry>  = HashSet::new();
         test_set.insert(PIDEntry { port: "7000".to_string(), pid: 1 });
         test_set.insert(PIDEntry { port: "7001".to_string(), pid: 2 });
-        let write_result = write_data_to_pid_file(test_set);
+        let write_result = write_data_to_pid_file(&test_set);
         assert!(write_result.is_ok());
 
         let pids = get_currently_running_pids();
