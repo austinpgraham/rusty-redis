@@ -27,7 +27,8 @@ fn main() {
             cli::ClusterConfig::Ls(ls_command) => ls_command.execute()
         },
         cli::ClusterCommand::Cluster(cluster_args) => match cluster_args {
-            cli::ClusterRuntime::Start(start_command) => start_command.execute()
+            cli::ClusterRuntime::Start(start_command) => start_command.execute(),
+            cli::ClusterRuntime::Stop(stop_command) => stop_command.execute()
         }
     };
 

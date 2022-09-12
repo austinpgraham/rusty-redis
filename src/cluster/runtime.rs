@@ -45,6 +45,25 @@ fn spawn_cluster_process(cluster_host: &String, pid_entries: &HashSet<PIDEntry>)
                 }                                
 }
 
+#[inline]
+fn kill_current_processes(pid_set: &HashSet<PIDEntry>) -> Result<(), ()> {
+    let mut root_command = Command::new("kill");
+    let mut command = root_command.borrow_mut();
+    for pid in pid_set.iter() {
+        command = command.arg(pid.pid.to_string());
+    }
+
+    match command.stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn() {
+                    Ok(_) => Ok(()),
+                    Err(msg) => {
+                        error!("{}", msg);
+                        Err(())
+                    }
+                }
+}
+
 #[derive(Debug)]
 struct ServerConf {
     pub conf_path: PathBuf,
@@ -111,6 +130,25 @@ pub fn start_cluster(cluster_host: &String, conf_files: Vec<String>) -> Result<(
                     },
                     Err(_) => Err("Failed to spawn main process for cluster.".to_string())
                 }
+            }
+        },
+        Err(_msg) => Err("Failed to assess current run state of system. Either manually delete $HOME/.rr/servers.pid or ensure all processes are stopped.".to_string())
+    }
+}
+
+pub fn stop_cluster() -> Result<(), String> {
+    match get_currently_running_pids() {
+        Ok(pids) => {
+            if pids.len() <= 0 {
+                return Err("No servers are running.".to_string());
+            }
+
+            match kill_current_processes(&pids) {
+                Ok(_) => {
+                    let empty_set: HashSet<PIDEntry> = HashSet::new();
+                    write_data_to_pid_file(&empty_set)
+                },
+                Err(_) => Err("Failed to kill all server processes.".to_string())
             }
         },
         Err(_msg) => Err("Failed to assess current run state of system. Either manually delete $HOME/.rr/servers.pid or ensure all processes are stopped.".to_string())

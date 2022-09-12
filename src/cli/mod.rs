@@ -3,6 +3,7 @@ use structopt::StructOpt;
 pub mod ls;
 pub mod cmd;
 pub mod start;
+pub mod stop;
 
 #[derive(Debug, StructOpt)]
 pub enum ClusterConfig {
@@ -11,7 +12,8 @@ pub enum ClusterConfig {
 
 #[derive(Debug, StructOpt)]
 pub enum ClusterRuntime {
-    Start(start::ClusterStart)
+    Start(start::ClusterStart),
+    Stop(stop::ClusterStop)
 }
 
 #[derive(Debug, StructOpt)]
