@@ -5,6 +5,8 @@ use std::{
     process::{Command, Stdio},
 };
 
+use mocktopus::macros::mockable;
+
 use crate::{
     cluster::config::read_conf_file,
     local::pid::{get_currently_running_pids, write_data_to_pid_file, PIDEntry},
@@ -157,5 +159,43 @@ pub fn stop_cluster() -> Result<(), String> {
             }
         },
         Err(_msg) => Err("Failed to assess current run state of system. Either manually delete $HOME/.rr/servers.pid or ensure all processes are stopped.".to_string())
+    }
+}
+
+#[mockable]
+#[inline]
+fn spawn_health_check_process(health_endpoint: &String) -> Result<(), String> {
+    match Command::new("redis-cli")
+                .arg("--cluster")
+                .arg("check")
+                .arg(health_endpoint)
+                .spawn() {
+                    Ok(mut child) => {
+                        match child.wait() {
+                            Ok(_) => Ok(()),
+                            Err(err) => {
+                                error!("Failed to run check command with error: {}", err);
+                                Err("Failed check command.".to_string())
+                            }
+                        }
+                    },
+                    Err(_) => Err("Failed to spawn check process.".to_string())
+                }
+}
+
+pub fn check_cluster_health(cluster_host: &String) -> Result<(), String> {
+    match get_currently_running_pids() {
+        Ok(pids) => {
+            let pids_as_vector = pids.iter().collect::<Vec<&PIDEntry>>();
+            let captain_pid = pids_as_vector.first();
+            match captain_pid {
+                Some(pid) => {
+                    let health_endpoint = format!("{}:{}",  cluster_host, pid.port);
+                    spawn_health_check_process(&health_endpoint)
+                },
+                None => Err("There are no currently running server processes.".to_string())
+            }
+        },
+        Err(msg) => Err(msg)
     }
 }
