@@ -166,21 +166,20 @@ pub fn stop_cluster() -> Result<(), String> {
 #[inline]
 fn spawn_health_check_process(health_endpoint: &String) -> Result<(), String> {
     match Command::new("redis-cli")
-                .arg("--cluster")
-                .arg("check")
-                .arg(health_endpoint)
-                .spawn() {
-                    Ok(mut child) => {
-                        match child.wait() {
-                            Ok(_) => Ok(()),
-                            Err(err) => {
-                                error!("Failed to run check command with error: {}", err);
-                                Err("Failed check command.".to_string())
-                            }
-                        }
-                    },
-                    Err(_) => Err("Failed to spawn check process.".to_string())
-                }
+        .arg("--cluster")
+        .arg("check")
+        .arg(health_endpoint)
+        .spawn()
+    {
+        Ok(mut child) => match child.wait() {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                error!("Failed to run check command with error: {}", err);
+                Err("Failed check command.".to_string())
+            }
+        },
+        Err(_) => Err("Failed to spawn check process.".to_string()),
+    }
 }
 
 pub fn check_cluster_health(cluster_host: &String) -> Result<(), String> {
@@ -190,12 +189,12 @@ pub fn check_cluster_health(cluster_host: &String) -> Result<(), String> {
             let captain_pid = pids_as_vector.first();
             match captain_pid {
                 Some(pid) => {
-                    let health_endpoint = format!("{}:{}",  cluster_host, pid.port);
+                    let health_endpoint = format!("{}:{}", cluster_host, pid.port);
                     spawn_health_check_process(&health_endpoint)
-                },
-                None => Err("There are no currently running server processes.".to_string())
+                }
+                None => Err("There are no currently running server processes.".to_string()),
             }
-        },
-        Err(msg) => Err(msg)
+        }
+        Err(msg) => Err(msg),
     }
 }

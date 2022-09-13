@@ -31,7 +31,7 @@ fn main() {
         cli::ClusterCommand::Cluster(cluster_args) => match cluster_args {
             cli::ClusterRuntime::Start(start_command) => start_command.execute(),
             cli::ClusterRuntime::Stop(stop_command) => stop_command.execute(),
-            cli::ClusterRuntime::Check(check_command) => check_command.execute()
+            cli::ClusterRuntime::Check(check_command) => check_command.execute(),
         },
     };
 
