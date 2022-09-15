@@ -1,5 +1,6 @@
 use structopt::StructOpt;
 
+pub mod check;
 pub mod cmd;
 pub mod ls;
 pub mod start;
@@ -14,6 +15,7 @@ pub enum ClusterConfig {
 pub enum ClusterRuntime {
     Start(start::ClusterStart),
     Stop(stop::ClusterStop),
+    Check(check::ClusterCheck),
 }
 
 #[derive(Debug, StructOpt)]

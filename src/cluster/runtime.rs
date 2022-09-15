@@ -5,6 +5,8 @@ use std::{
     process::{Command, Stdio},
 };
 
+use mocktopus::macros::mockable;
+
 use crate::{
     cluster::config::read_conf_file,
     local::pid::{get_currently_running_pids, write_data_to_pid_file, PIDEntry},
@@ -157,5 +159,111 @@ pub fn stop_cluster() -> Result<(), String> {
             }
         },
         Err(_msg) => Err("Failed to assess current run state of system. Either manually delete $HOME/.rr/servers.pid or ensure all processes are stopped.".to_string())
+    }
+}
+
+/// Spawns a Redis health check with a given endpoint in the format
+/// host:port. Waits for the child process to finish and forwards the out.
+///
+/// # Arguments
+/// * `health_endpoint` - host:port format endpoint used to check health.
+///                       Should be an existing running Redis server.
+///
+/// # Examples
+/// ```
+/// let sample_endpoint = "127.0.0.1:7000".to_string();
+/// spawn_health_check_process(&sample_endpoint).expect("Failed to spawn child health process.");
+/// ```
+#[mockable]
+#[inline]
+fn spawn_health_check_process(health_endpoint: &String) -> Result<(), String> {
+    match Command::new("redis-cli")
+        .arg("--cluster")
+        .arg("check")
+        .arg(health_endpoint)
+        .spawn()
+    {
+        Ok(mut child) => match child.wait() {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                error!("Failed to run check command with error: {}", err);
+                Err("Failed check command.".to_string())
+            }
+        },
+        Err(_) => Err("Failed to spawn check process.".to_string()),
+    }
+}
+
+/// Given a cluster host, get the currently running server processes and
+/// use one to run a redis-cli --cluster check command.
+///
+/// # Arguments
+/// * `cluster_host` - String representing the target cluster host.
+///
+/// # Examples
+/// ```
+/// let sample_host = "localhost".to_string();
+/// check_cluster_health(&sample_host).expect("Failed to run server health check.");
+/// ```
+pub fn check_cluster_health(cluster_host: &String) -> Result<(), String> {
+    match get_currently_running_pids() {
+        Ok(pids) => {
+            let pids_as_vector = pids.iter().collect::<Vec<&PIDEntry>>();
+            let captain_pid = pids_as_vector.first();
+            match captain_pid {
+                Some(pid) => {
+                    let health_endpoint = format!("{}:{}", cluster_host, pid.port);
+                    spawn_health_check_process(&health_endpoint)
+                }
+                None => Err("There are no currently running server processes.".to_string()),
+            }
+        }
+        Err(msg) => Err(msg),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use mocktopus::mocking::{MockResult, Mockable};
+
+    use super::*;
+
+    #[test]
+    fn check_cluster_health_failed_pid_check() {
+        get_currently_running_pids
+            .mock_safe(|| MockResult::Return(Err("Failed to get PIDs".to_string())));
+
+        let sample_host = "localhost".to_string();
+        let cluster_result = check_cluster_health(&sample_host);
+        assert!(cluster_result.is_err());
+    }
+
+    #[test]
+    fn check_cluster_health_empty_pid_set() {
+        get_currently_running_pids.mock_safe(|| MockResult::Return(Ok(HashSet::new())));
+
+        let sample_host = "localhost".to_string();
+        let cluster_result = check_cluster_health(&sample_host);
+        assert!(cluster_result.is_err());
+    }
+
+    #[test]
+    fn check_cluster_health_process_should_start() {
+        get_currently_running_pids.mock_safe(|| {
+            let mut test_set: HashSet<PIDEntry> = HashSet::new();
+            test_set.insert(PIDEntry {
+                port: "7000".to_string(),
+                pid: 1234,
+            });
+
+            MockResult::Return(Ok(test_set))
+        });
+
+        spawn_health_check_process.mock_safe(|_| MockResult::Return(Ok(())));
+
+        let sample_host = "localhost".to_string();
+        let cluster_result = check_cluster_health(&sample_host);
+        assert!(cluster_result.is_ok());
     }
 }
