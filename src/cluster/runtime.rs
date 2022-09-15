@@ -162,6 +162,18 @@ pub fn stop_cluster() -> Result<(), String> {
     }
 }
 
+/// Spawns a Redis health check with a given endpoint in the format
+/// host:port. Waits for the child process to finish and forwards the out.
+///
+/// # Arguments
+/// * `health_endpoint` - host:port format endpoint used to check health.
+///                       Should be an existing running Redis server.
+///
+/// # Examples
+/// ```
+/// let sample_endpoint = "127.0.0.1:7000".to_string();
+/// spawn_health_check_process(&sample_endpoint).expect("Failed to spawn child health process.");
+/// ```
 #[mockable]
 #[inline]
 fn spawn_health_check_process(health_endpoint: &String) -> Result<(), String> {
@@ -182,6 +194,17 @@ fn spawn_health_check_process(health_endpoint: &String) -> Result<(), String> {
     }
 }
 
+/// Given a cluster host, get the currently running server processes and
+/// use one to run a redis-cli --cluster check command.
+///
+/// # Arguments
+/// * `cluster_host` - String representing the target cluster host.
+///
+/// # Examples
+/// ```
+/// let sample_host = "localhost".to_string();
+/// check_cluster_health(&sample_host).expect("Failed to run server health check.");
+/// ```
 pub fn check_cluster_health(cluster_host: &String) -> Result<(), String> {
     match get_currently_running_pids() {
         Ok(pids) => {
@@ -196,5 +219,51 @@ pub fn check_cluster_health(cluster_host: &String) -> Result<(), String> {
             }
         }
         Err(msg) => Err(msg),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use mocktopus::mocking::{MockResult, Mockable};
+
+    use super::*;
+
+    #[test]
+    fn check_cluster_health_failed_pid_check() {
+        get_currently_running_pids
+            .mock_safe(|| MockResult::Return(Err("Failed to get PIDs".to_string())));
+
+        let sample_host = "localhost".to_string();
+        let cluster_result = check_cluster_health(&sample_host);
+        assert!(cluster_result.is_err());
+    }
+
+    #[test]
+    fn check_cluster_health_empty_pid_set() {
+        get_currently_running_pids.mock_safe(|| MockResult::Return(Ok(HashSet::new())));
+
+        let sample_host = "localhost".to_string();
+        let cluster_result = check_cluster_health(&sample_host);
+        assert!(cluster_result.is_err());
+    }
+
+    #[test]
+    fn check_cluster_health_process_should_start() {
+        get_currently_running_pids.mock_safe(|| {
+            let mut test_set: HashSet<PIDEntry> = HashSet::new();
+            test_set.insert(PIDEntry {
+                port: "7000".to_string(),
+                pid: 1234,
+            });
+
+            MockResult::Return(Ok(test_set))
+        });
+
+        spawn_health_check_process.mock_safe(|_| MockResult::Return(Ok(())));
+
+        let sample_host = "localhost".to_string();
+        let cluster_result = check_cluster_health(&sample_host);
+        assert!(cluster_result.is_ok());
     }
 }
